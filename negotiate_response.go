@@ -28,6 +28,15 @@ const (
 
 type NegotiateResponse []byte
 
+func (p NegotiateResponse) IsInvalid() bool {
+	// MS-SMB2, MUST be set to 36
+	if len(p) < 36 {
+		return true
+	}
+
+	return false
+}
+
 func (r NegotiateResponse) StructureSize() uint16 {
 	return le.Uint16(r[0:2])
 }
@@ -101,19 +110,33 @@ func (r NegotiateResponse) SetMaxWriteSize(v uint32) {
 }
 
 func (r NegotiateResponse) SystemTime() time.Time {
-	return time.Unix(0, int64(le.Uint64(r[40:48])))
+	dwLowDateTime := le.Uint32(r[40:44])
+	dwHighDateTime := le.Uint32(r[44:48])
+	dateTime := uint64(dwHighDateTime)<<32 | uint64(dwLowDateTime)
+	return time.Unix(0, int64(dateTime-116444736000000000)*100)
 }
 
 func (r NegotiateResponse) SetSystemTime(v time.Time) {
-	le.PutUint64(r[40:48], uint64(v.UnixNano()))
+	dateTime := v.UnixNano()/100 + 116444736000000000
+	dwLowDateTime := uint32(dateTime)
+	dwHighDateTime := uint32(dateTime >> 32)
+	le.PutUint32(r[40:44], dwLowDateTime)
+	le.PutUint32(r[44:48], dwHighDateTime)
 }
 
 func (r NegotiateResponse) ServerStartTime() time.Time {
-	return time.Unix(0, int64(le.Uint64(r[48:56])))
+	dwLowDateTime := le.Uint32(r[48:52])
+	dwHighDateTime := le.Uint32(r[52:56])
+	dateTime := uint64(dwHighDateTime)<<32 | uint64(dwLowDateTime)
+	return time.Unix(0, int64(dateTime-116444736000000000)*100)
 }
 
 func (r NegotiateResponse) SetServerStartTime(v time.Time) {
-	le.PutUint64(r[48:56], uint64(v.UnixNano()))
+	dateTime := v.UnixNano()/100 + 116444736000000000
+	dwLowDateTime := uint32(dateTime)
+	dwHighDateTime := uint32(dateTime >> 32)
+	le.PutUint32(r[48:52], dwLowDateTime)
+	le.PutUint32(r[52:56], dwHighDateTime)
 }
 
 func (r NegotiateResponse) SecurityBufferOffset() uint16 {
@@ -143,23 +166,23 @@ func (r NegotiateResponse) SetNegotiateContextOffset(v uint32) {
 }
 
 func (r NegotiateResponse) Buffer() []byte {
-	offset := r.SecurityBufferOffset()
+	offset := r.SecurityBufferOffset() - 64
 	length := r.SecurityBufferLength()
 	if offset+length > uint16(len(r)) {
-		log.Printf("warning: negotiate response buffer is out of bounds")
+		log.Printf("warning: negotiate response buffer is out of bounds (offset=%d, length=%d, len=%d)", offset, length, len(r))
 		return nil
 	}
 	return r[offset : offset+length]
 }
 
 func (r NegotiateResponse) SetBuffer(v []byte) {
-	offset := r.SecurityBufferOffset()
+	offset := r.SecurityBufferOffset() - 64
 	length := r.SecurityBufferLength()
 	copy(r[offset:offset+length], v)
 }
 
 func (r NegotiateResponse) NegotiateContexts() []NegotiateContext {
-	offset := r.NegotiateContextOffset()
+	offset := r.NegotiateContextOffset() - 64
 	length := r.NegotiateContextCount()
 	if offset > uint32(len(r)) {
 		log.Printf("warning: negotiate response negotiate contexts are out of bounds")
@@ -167,23 +190,29 @@ func (r NegotiateResponse) NegotiateContexts() []NegotiateContext {
 	}
 	ret := make([]NegotiateContext, length)
 	for i := uint16(0); i < length; i++ {
-		ret[i] = NegotiateContext(r[offset:])
-		length := uint32(ret[i].DataLength())
-		ret[i] = NegotiateContext(r[offset : offset+length])
-		offset += 8 + uint32(length)
 		if offset > uint32(len(r)) {
 			log.Printf("warning: negotiate response negotiate context is out of bounds")
 			return nil
+		}
+		ret[i] = NegotiateContext(r[offset:])
+		length := uint32(ret[i].DataLength())
+		ret[i] = NegotiateContext(r[offset : offset+length+8])
+		offset += 8 + uint32(length)
+		if offset%8 != 0 {
+			offset += 8 - offset%8
 		}
 	}
 	return ret
 }
 
 func (r NegotiateResponse) SetNegotiateContexts(v []NegotiateContext) {
-	offset := r.NegotiateContextOffset()
+	offset := r.NegotiateContextOffset() - 64
 	for _, c := range v {
 		length := uint32(c.DataLength())
-		copy(r[offset:offset+length], c)
+		copy(r[offset:offset+length+8], c)
 		offset += 8 + uint32(length)
+		if offset%8 != 0 {
+			offset += 8 - offset%8
+		}
 	}
 }

@@ -24,7 +24,29 @@ func TestPacket(t *testing.T) {
 				"Status":        0,
 				"Command":       0,
 				"Credits":       1,
-				"Flags":         0,
+				"Flags":         FLAGS(0),
+				"NextCommand":   0,
+				"MessageID":     0,
+				"Reserved":      0,
+				"TreeID":        0,
+				"SessionID":     0,
+				"Signature":     "00000000000000000000000000000000",
+			},
+		},
+		{
+			name: "samba4-response",
+			input: func() []byte {
+				r, _ := hex.DecodeString("fe534d4240000100000000000000010001000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000041000100110302003139322e3136382e352e3133350000000700000000008000000080000000800048f69555fcf4d801000000000000000080006000e0000000605e06062b0601050502a0543052a024302206092a864882f71201020206092a864886f712010202060a2b06010401823702020aa32a3028a0261b246e6f745f646566696e65645f696e5f5246433431373840706c656173655f69676e6f726501002600000000000100200001007ef77bcacbac9320a00216936111a47899589c6dd49eb0c190b306a6cc84439d0000020004000000000001000100")
+				return r
+			}(),
+			expected: map[string]interface{}{
+				"ProtocolID":    "fe534d42",
+				"StructureSize": 64,
+				"CreditCharge":  1,
+				"Status":        0,
+				"Command":       0,
+				"Credits":       1,
+				"Flags":         SMB2_FLAGS_SERVER_TO_REDIR,
 				"NextCommand":   0,
 				"MessageID":     0,
 				"Reserved":      0,
@@ -58,7 +80,7 @@ func TestPacket(t *testing.T) {
 			if nr.CreditRequestResponse() != uint16(c.expected["Credits"].(int)) {
 				t.Errorf("NegotiateRequest.Credits() = %v, want %v", nr.CreditRequestResponse(), c.expected["Credits"])
 			}
-			if nr.Flags() != uint32(c.expected["Flags"].(int)) {
+			if nr.Flags() != uint32(c.expected["Flags"].(FLAGS)) {
 				t.Errorf("NegotiateRequest.Flags() = %v, want %v", nr.Flags(), c.expected["Flags"])
 			}
 			if nr.NextCommand() != uint32(c.expected["NextCommand"].(int)) {
