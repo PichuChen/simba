@@ -84,12 +84,12 @@ func (p PacketCodec) SetCreditRequestResponse(v uint16) {
 	binary.LittleEndian.PutUint16(p[14:16], v)
 }
 
-func (p PacketCodec) Flags() uint32 {
-	return binary.LittleEndian.Uint32(p[16:20])
+func (p PacketCodec) Flags() FLAGS {
+	return FLAGS(binary.LittleEndian.Uint32(p[16:20]))
 }
 
-func (p PacketCodec) SetFlags(v uint32) {
-	binary.LittleEndian.PutUint32(p[16:20], v)
+func (p PacketCodec) SetFlags(v FLAGS) {
+	binary.LittleEndian.PutUint32(p[16:20], uint32(v))
 }
 
 func (p PacketCodec) NextCommand() uint32 {
