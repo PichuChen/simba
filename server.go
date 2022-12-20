@@ -83,6 +83,15 @@ func (c *conn) readRequest() (w PacketCodec, err error) {
 	fmt.Printf("readRequest: %v len: %d\n", hex.EncodeToString(buf[:n]), n)
 	// zero := buf[0]
 	stringProtocolLength := (uint32(buf[1]) << 16) + (uint32(buf[2]) << 8) + uint32(buf[3])
+	// TODO: using loop to read all data
+	if n < int(stringProtocolLength) {
+		n2, err := c.rwc.Read(buf[n:])
+		if err != nil {
+			return nil, err
+		}
+		n += n2
+	}
+
 	smb2Message := buf[4 : 4+stringProtocolLength]
 
 	msg := PacketCodec(smb2Message)
