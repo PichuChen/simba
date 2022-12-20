@@ -60,8 +60,10 @@ func (c *conn) serve() {
 			fmt.Printf("SMB2_NEGOTIATE\n")
 			msg := NegotiateRequest(r[64:])
 			c.handleNegotiate(r.SessionId(), msg)
-		// case SMB2_SESSION_SETUP:
-		// 	fmt.Printf("SMB2_SESSION_SETUP\n")
+		case SMB2_SESSION_SETUP:
+			fmt.Printf("SMB2_SESSION_SETUP\n")
+			// msg := SessionSetupRequest(r[64:])
+			// c.handleSessionSetup(r.SessionId(), msg)
 
 		default:
 			fmt.Printf("unknown command: %v (%d)\n", r.Command(), r.Command())

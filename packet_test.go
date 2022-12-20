@@ -80,7 +80,7 @@ func TestPacket(t *testing.T) {
 			if nr.CreditRequestResponse() != uint16(c.expected["Credits"].(int)) {
 				t.Errorf("NegotiateRequest.Credits() = %v, want %v", nr.CreditRequestResponse(), c.expected["Credits"])
 			}
-			if nr.Flags() != uint32(c.expected["Flags"].(FLAGS)) {
+			if nr.Flags() != c.expected["Flags"].(FLAGS) {
 				t.Errorf("NegotiateRequest.Flags() = %v, want %v", nr.Flags(), c.expected["Flags"])
 			}
 			if nr.NextCommand() != uint32(c.expected["NextCommand"].(int)) {
