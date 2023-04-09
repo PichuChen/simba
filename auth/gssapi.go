@@ -105,8 +105,8 @@ func NewInitPayload(b []byte) (*InitPayload, error) {
 
 	ret.Token.NegTokenInit.MechTypes = list
 
-	fmt.Println("remain: ", MechTypeInner)
-	fmt.Println("remain: ", MechTypesInner)
+	// fmt.Println("remain: ", MechTypeInner)
+	// fmt.Println("remain: ", MechTypesInner)
 	var outPresent bool
 	var reqFlagInner = cryptobyte.String{}
 	if !SPNObjectStringInner.ReadOptionalASN1(&reqFlagInner, &outPresent, 0xA1 /* asn1.ClassContextSpecific */) {
@@ -131,15 +131,15 @@ func NewInitPayload(b []byte) (*InitPayload, error) {
 		}
 		ret.Token.NegTokenInit.MechToken = mechToken
 	}
-	fmt.Println("remain: ", SPNObjectStringInner)
+	// fmt.Println("remain: ", SPNObjectStringInner)
 
 	var mechListMICInner = cryptobyte.String{}
 	if !SPNObjectStringInner.ReadOptionalASN1(&mechListMICInner, &outPresent, 0xA3 /* asn1.ClassContextSpecific */) {
 		return nil, fmt.Errorf("ReadASN1 for SPNObjectString tag %v failed", 0xA3)
 	}
 	if outPresent {
-		fmt.Printf("mechListMICInner: %v\n", mechListMICInner)
-		fmt.Printf("mechListMICInner: %s\n", mechListMICInner)
+		// fmt.Printf("mechListMICInner: %v\n", mechListMICInner)
+		// fmt.Printf("mechListMICInner: %s\n", mechListMICInner)
 		var mechListMIC = []byte{}
 		var tag asn1.Tag
 		var inner = cryptobyte.String{}
@@ -158,9 +158,9 @@ func NewInitPayload(b []byte) (*InitPayload, error) {
 				if !negHints.ReadASN1(&negHintsInner, 0xA0) {
 					return nil, fmt.Errorf("ReadASN1 for SPNObjectString tag %v failed", 0xA0)
 				}
-				fmt.Printf("negHintsInner2: %v\n", negHintsInner)
+				// fmt.Printf("negHintsInner2: %v\n", negHintsInner)
 				var negHintsBytes []byte
-				if !negHintsInner.ReadASN1Bytes(&negHintsBytes, 0x1B) { // asn1.GeneralString
+				if !negHintsInner.ReadASN1Bytes(&negHintsBytes, asn1.GeneralString) { // asn1.GeneralString
 					return nil, fmt.Errorf("ReadASN1 for SPNObjectString tag %v failed", 0xA3)
 				}
 				ret.Token.NegTokenInit.NegHints = negHintsBytes
@@ -171,7 +171,7 @@ func NewInitPayload(b []byte) (*InitPayload, error) {
 		}
 		ret.Token.NegTokenInit.MechListMIC = mechListMIC
 	}
-	fmt.Println("remain: ", SPNObjectStringInner)
+	// fmt.Println("remain: ", SPNObjectStringInner)
 
 	var negHintsInner = cryptobyte.String{}
 	// if there are more than 3 optional fields, the negHints will be the 3th field, and the mechListMIC will be the 4th field
@@ -186,8 +186,52 @@ func NewInitPayload(b []byte) (*InitPayload, error) {
 		ret.Token.NegTokenInit.MechListMIC = inner
 	}
 
-	fmt.Println("remain: ", SPNObjectStringInner)
-	fmt.Println("remain: ", SPNObjectString)
+	// fmt.Println("remain: ", SPNObjectStringInner)
+	// fmt.Println("remain: ", SPNObjectString)
 
 	return ret, nil
+}
+
+func (payload *InitPayload) Bytes() ([]byte, error) {
+	var builder cryptobyte.Builder
+	builder.AddASN1(asn1.Tag(0).Constructed()|0x40, func(builder *cryptobyte.Builder) {
+		builder.AddASN1ObjectIdentifier(payload.OID)
+		builder.AddASN1(0xA0, func(builder *cryptobyte.Builder) {
+			builder.AddASN1(asn1.SEQUENCE, func(builder *cryptobyte.Builder) {
+				builder.AddASN1(0xA0, func(builder *cryptobyte.Builder) {
+					builder.AddASN1(asn1.SEQUENCE, func(builder *cryptobyte.Builder) {
+						for _, mechType := range payload.Token.NegTokenInit.MechTypes {
+							builder.AddASN1ObjectIdentifier(encoding_asn1.ObjectIdentifier(mechType))
+						}
+					})
+				})
+
+				if payload.Token.NegTokenInit.ReqFlags.BitLength > 0 {
+					builder.AddASN1(0xA1, func(builder *cryptobyte.Builder) {
+						builder.AddASN1BitString(payload.Token.NegTokenInit.ReqFlags.Bytes)
+					})
+				}
+
+				if len(payload.Token.NegTokenInit.MechToken) > 0 {
+					builder.AddASN1(0xA2, func(builder *cryptobyte.Builder) {
+						builder.AddASN1OctetString(payload.Token.NegTokenInit.MechToken)
+					})
+				}
+
+				if len(payload.Token.NegTokenInit.NegHints) > 0 {
+					builder.AddASN1(0xA3, func(builder *cryptobyte.Builder) {
+						builder.AddASN1(asn1.SEQUENCE, func(builder *cryptobyte.Builder) {
+							builder.AddASN1(0xA0, func(builder *cryptobyte.Builder) {
+								builder.AddASN1(asn1.GeneralString, func(builder *cryptobyte.Builder) {
+									builder.AddBytes(payload.Token.NegTokenInit.NegHints)
+								})
+							})
+						})
+					})
+				}
+			})
+		})
+
+	})
+	return builder.Bytes()
 }

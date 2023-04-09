@@ -99,3 +99,46 @@ func TestGSSAPIDecode(t *testing.T) {
 	}
 
 }
+
+func TestGSSAPIEncode(t *testing.T) {
+	cases := []struct {
+		name     string
+		input    InitPayload
+		expected []byte
+	}{
+		{
+			name: "basic",
+			input: InitPayload{
+				OID: encoding_asn1.ObjectIdentifier([]int{1, 3, 6, 1, 5, 5, 2}),
+				Token: NegotiationToken{
+					NegTokenInit: NegTokenInitData{
+						MechTypes: MechTypeList{
+							MechType(encoding_asn1.ObjectIdentifier([]int{1, 3, 6, 1, 4, 1, 311, 2, 2, 10})),
+						},
+						ReqFlags:  encoding_asn1.BitString{Bytes: []byte{}, BitLength: 0},
+						NegHints:  []byte("not_defined_in_RFC4178@please_ignore"),
+						MechToken: []byte{},
+					},
+				},
+			},
+			expected: func() []byte {
+				r, _ := hex.DecodeString("604806062b0601050502a03e303ca00e300c060a2b06010401823702020aa32a3028a0261b246e6f745f646566696e65645f696e5f5246433431373840706c656173655f69676e6f7265")
+				return r
+			}(),
+		},
+	}
+
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			actual, err := c.input.Bytes()
+			if err != nil {
+				t.Errorf("Encode() = %v, want %v", err, nil)
+				return
+			}
+			if hex.EncodeToString(actual) != hex.EncodeToString(c.expected) {
+				t.Errorf("Encode() = %v, want %v", actual, c.expected)
+			}
+		})
+	}
+
+}
