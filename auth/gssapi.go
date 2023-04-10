@@ -2,6 +2,7 @@ package auth
 
 import (
 	encoding_asn1 "encoding/asn1"
+	"encoding/hex"
 	"fmt"
 
 	"golang.org/x/crypto/cryptobyte"
@@ -11,6 +12,12 @@ import (
 var (
 	OBJECT_IDENTIFIER = 0x06
 )
+
+var DefaultNegoPayload = func() []byte {
+	r, _ := hex.DecodeString("604806062b0601050502a03e303ca00e300c060a2b06010401823702020aa32a3028a0261b246e6f745f646566696e65645f696e5f5246433431373840706c656173655f69676e6f7265")
+
+	return r
+}()
 
 type InitPayload struct {
 	OID   encoding_asn1.ObjectIdentifier `asn1:"set,tag:6"`
@@ -220,7 +227,7 @@ func (payload *InitPayload) Bytes() ([]byte, error) {
 
 				if len(payload.Token.NegTokenInit.NegHints) > 0 {
 					builder.AddASN1(0xA3, func(builder *cryptobyte.Builder) {
-						builder.AddASN1(asn1.SEQUENCE, func(builder *cryptobyte.Builder) {
+						builder.AddASN1(asn1.SEQUENCE+1, func(builder *cryptobyte.Builder) {
 							builder.AddASN1(0xA0, func(builder *cryptobyte.Builder) {
 								builder.AddASN1(asn1.GeneralString, func(builder *cryptobyte.Builder) {
 									builder.AddBytes(payload.Token.NegTokenInit.NegHints)

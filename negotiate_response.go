@@ -128,10 +128,20 @@ func (r NegotiateResponse) ServerStartTime() time.Time {
 	dwLowDateTime := le.Uint32(r[48:52])
 	dwHighDateTime := le.Uint32(r[52:56])
 	dateTime := uint64(dwHighDateTime)<<32 | uint64(dwLowDateTime)
+	if dateTime == 0 {
+		return time.Time{}
+	}
 	return time.Unix(0, int64(dateTime-116444736000000000)*100)
 }
 
 func (r NegotiateResponse) SetServerStartTime(v time.Time) {
+	log.Println("SMB2: SetServerStartTime", v)
+	if v.IsZero() {
+		log.Println("SMB2: ServerStartTime is zero")
+		le.PutUint32(r[48:52], 0)
+		le.PutUint32(r[52:56], 0)
+		return
+	}
 	dateTime := v.UnixNano()/100 + 116444736000000000
 	dwLowDateTime := uint32(dateTime)
 	dwHighDateTime := uint32(dateTime >> 32)

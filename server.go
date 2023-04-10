@@ -5,7 +5,11 @@ import (
 	"fmt"
 	"net"
 	"time"
+
+	"github.com/PichuChen/simba/auth"
 )
+
+var serverGUID = []byte{0x6d, 0x62, 0x76, 0x6d, 0x32, 0x32, 0x31, 0x32, 0x30, 0x38, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00}
 
 type conn struct {
 	server *Server
@@ -109,21 +113,45 @@ func (c *conn) readRequest() (w PacketCodec, err error) {
 
 func (c *conn) handleNegotiate(sessionID uint64, msg NegotiateRequest) error {
 	fmt.Printf("handleNegotiate: %v\n", msg.ClientGuid())
+
+	securityBufferPayload := auth.DefaultNegoPayload
+
+	negotiateContextPreauth := NegotiateContext(make([]byte, 8+38))
+	negotiateContextPreauth.SetContextType(SMB2_PREAUTH_INTEGRITY_CAPABILITIES)
+	negotiateContextPreauth.SetDataLength(38)
+	negotiateContextPreauth.SetReserved(0)
+	negotiateContextPreauth.SetData([]byte{
+		0x01, 0x00, // hash algorithm count
+		0x20, 0x00, // salt length
+		0x01, 0x00, // hash algorithm: SHA-512
+		0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08, 0x09, 0x0a, 0x0b, 0x0c, 0x0d, 0x0e, 0x0f, 0x10,
+		0x11, 0x12, 0x13, 0x14, 0x15, 0x16, 0x17, 0x18, 0x19, 0x1a, 0x1b, 0x1c, 0x1d, 0x1e, 0x1f, 0x20})
+
+	negotiateContextEncryption := NegotiateContext(make([]byte, 8+4))
+	negotiateContextEncryption.SetContextType(SMB2_ENCRYPTION_CAPABILITIES)
+	negotiateContextEncryption.SetDataLength(4)
+	negotiateContextEncryption.SetReserved(0)
+	negotiateContextEncryption.SetData([]byte{0x01, 0x00, 0x02, 0x00})
+
 	pkt := []byte{}
-	responseHdr := NegotiateResponse(make([]byte, 65))
+	responseHdr := NegotiateResponse(make([]byte, 65+len(securityBufferPayload)+len(negotiateContextPreauth)+19))
 	responseHdr.SetStructureSize(65)
-	responseHdr.SetSecurityMode(0)
+	responseHdr.SetSecurityMode(SMB2_NEGOTIATE_SIGNING_ENABLED)
 	responseHdr.SetDialectRevision(0x311)
-	responseHdr.SetNegotiateContextCount(0)
-	responseHdr.SetServerGuid(make([]byte, 16))
-	responseHdr.SetCapabilities(0x0)
-	responseHdr.SetMaxTransactSize(0x100000)
-	responseHdr.SetMaxReadSize(0x100000)
-	responseHdr.SetMaxWriteSize(0x100000)
+	responseHdr.SetNegotiateContextCount(2)
+	responseHdr.SetServerGuid(serverGUID)
+	responseHdr.SetCapabilities(SMB2_GLOBAL_CAP_DFS | SMB2_GLOBAL_CAP_LEASING | SMB2_GLOBAL_CAP_LARGE_MTU)
+	responseHdr.SetMaxTransactSize(8388608) // 8MB
+	responseHdr.SetMaxReadSize(8388608)
+	responseHdr.SetMaxWriteSize(8388608)
 	responseHdr.SetSystemTime(time.Now())
-	responseHdr.SetServerStartTime(time.Now())
-	responseHdr.SetSecurityBufferOffset(64)
-	responseHdr.SetSecurityBufferLength(0)
+	responseHdr.SetServerStartTime(time.Time{})
+	responseHdr.SetSecurityBufferOffset(0x80)
+	responseHdr.SetSecurityBufferLength(uint16(len(securityBufferPayload)))
+	responseHdr.SetBuffer(securityBufferPayload)
+
+	responseHdr.SetNegotiateContextOffset(0xD0)
+	responseHdr.SetNegotiateContexts([]NegotiateContext{negotiateContextPreauth, negotiateContextEncryption})
 
 	smb2Header := PacketCodec(make([]byte, 64, 64))
 	smb2Header.SetProtocolId()
