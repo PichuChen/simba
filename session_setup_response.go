@@ -57,11 +57,12 @@ func (p SessionSetupResponse) SetSecurityBufferLength(v uint16) {
 }
 
 func (p SessionSetupResponse) Buffer() []byte {
-	return p[p.SecurityBufferOffset() : p.SecurityBufferOffset()+p.SecurityBufferLength()]
+	return p[p.SecurityBufferOffset()-64 : p.SecurityBufferOffset()+p.SecurityBufferLength()]
 }
 
 func (p SessionSetupResponse) SetBuffer(v []byte) {
-	p.SetSecurityBufferOffset(8)
-	p.SetSecurityBufferLength(uint16(len(v)))
-	copy(p[p.SecurityBufferOffset():p.SecurityBufferOffset()+p.SecurityBufferLength()], v)
+	// p.SetSecurityBufferOffset(8)
+	offset := p.SecurityBufferOffset() - 64
+	length := p.SecurityBufferLength()
+	copy(p[offset:offset+length], v)
 }

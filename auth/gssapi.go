@@ -227,7 +227,7 @@ func (payload *InitPayload) Bytes() ([]byte, error) {
 
 				if len(payload.Token.NegTokenInit.NegHints) > 0 {
 					builder.AddASN1(0xA3, func(builder *cryptobyte.Builder) {
-						builder.AddASN1(asn1.SEQUENCE+1, func(builder *cryptobyte.Builder) {
+						builder.AddASN1(asn1.SEQUENCE, func(builder *cryptobyte.Builder) {
 							builder.AddASN1(0xA0, func(builder *cryptobyte.Builder) {
 								builder.AddASN1(asn1.GeneralString, func(builder *cryptobyte.Builder) {
 									builder.AddBytes(payload.Token.NegTokenInit.NegHints)

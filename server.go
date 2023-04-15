@@ -3,6 +3,7 @@ package simba
 import (
 	"encoding/hex"
 	"fmt"
+	"log"
 	"net"
 	"time"
 
@@ -190,8 +191,13 @@ func (c *conn) handleNegotiate(sessionID uint64, msg NegotiateRequest) error {
 func (c *conn) handleSessionSetup(sessionID uint64, msg SessionSetupRequest) error {
 	fmt.Printf("handleSessionSetup: %v\n", msg)
 	pkt := []byte{}
-	responseHdr := SessionSetupResponse(make([]byte, 65, 65))
+	securityBuffer, _ := hex.DecodeString("a181c43081c1a0030a0101a10c060a2b06010401823702020aa281ab0481a84e544c4d5353500002000000140014003800000015828ae2b5bdb4abf704918f00000000000000005c005c004c000000060100000000000f4d00420056004d00320032003100320030003800020014004d00420056004d00320032003100320030003800010014004d00420056004d0032003200310032003000380004000000030014006d00620076006d003200320031003200300038000700080060bbda0f486dd90100000000")
+	log.Printf("securityBuffer lenght: %v", len(securityBuffer))
+	responseHdr := SessionSetupResponse(make([]byte, 8+len(securityBuffer)))
 	responseHdr.SetStructureSize()
+	responseHdr.SetSecurityBufferOffset(0x48)
+	responseHdr.SetSecurityBufferLength(uint16(len(securityBuffer)))
+	responseHdr.SetBuffer(securityBuffer)
 	// responseHdr.SetSecurityMode(Securi)
 
 	smb2Header := PacketCodec(make([]byte, 64, 64))
@@ -199,16 +205,22 @@ func (c *conn) handleSessionSetup(sessionID uint64, msg SessionSetupRequest) err
 	smb2Header.SetStructureSize()
 	smb2Header.SetCreditCharge(1)
 	smb2Header.SetCommand(SMB2_SESSION_SETUP)
-	smb2Header.SetStatus(0)
+	smb2Header.SetStatus(STATUS_MORE_PROCESSING_REQUIRED)
 	smb2Header.SetCreditRequestResponse(1)
 	smb2Header.SetFlags(SMB2_FLAGS_SERVER_TO_REDIR)
 	smb2Header.SetNextCommand(0)
-	smb2Header.SetMessageId(0)
+	smb2Header.SetMessageId(1)
 	smb2Header.SetTreeId(0)
+	// if sessionID == 0 {
+	// 	sessionID = 0xebc20a15
+	// } else {
+	// 	sessionID++
+	// }
 	smb2Header.SetSessionId(sessionID)
 	smb2Header.SetSignature([]byte{0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00})
 
 	l := len(smb2Header) + len(responseHdr)
+	log.Printf("smb2 length: %v, resp len: %v\n", len(smb2Header), len(responseHdr))
 	netBIOSHeader := []byte{0x00, 0x00, 0x00, 0x00}
 	netBIOSHeader[3] = byte(l)
 	netBIOSHeader[2] = byte(l >> 8)

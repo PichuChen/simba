@@ -136,7 +136,7 @@ func TestGSSAPIEncode(t *testing.T) {
 				return
 			}
 			if hex.EncodeToString(actual) != hex.EncodeToString(c.expected) {
-				t.Errorf("Encode() = %v, want %v", actual, c.expected)
+				t.Errorf("Encode() = %0x, want %0x", actual, c.expected)
 			}
 		})
 	}
