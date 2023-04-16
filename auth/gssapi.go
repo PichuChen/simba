@@ -79,7 +79,7 @@ func NewInitPayload(b []byte) (*InitPayload, error) {
 	ret := &InitPayload{}
 
 	if !input.ReadASN1(&inner, asn1.Tag(0).Constructed()|0x40 /* application */) {
-		return nil, fmt.Errorf("ReadASN1 for tag %v failed", asn1.Tag(0).Constructed()|0x40)
+		return nil, fmt.Errorf("ReadASN1 for tag 0x%0x failed", asn1.Tag(0).Constructed()|0x40)
 	}
 
 	if !inner.ReadASN1ObjectIdentifier(&ret.OID) {

@@ -7,6 +7,11 @@ import (
 
 type NTLMMessage []byte
 
+const (
+	NTLMSSP_NEGOTIATE uint32 = 1
+	NTLMSSP_AUTH      uint32 = 3
+)
+
 func (p NTLMMessage) IsInvalid() bool {
 	// MS-SMB2, MUST be set to 12
 	if len(p) < 12 {
