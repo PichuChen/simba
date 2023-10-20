@@ -12,6 +12,9 @@ import (
 
 var serverGUID = []byte{0x6d, 0x62, 0x76, 0x6d, 0x32, 0x32, 0x31, 0x32, 0x30, 0x38, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00}
 
+// TODO: change to a session manager
+var sessionID = uint64(2023)
+
 type conn struct {
 	server *Server
 
@@ -189,7 +192,7 @@ func (c *conn) handleNegotiate(p PacketCodec, msg NegotiateRequest) error {
 }
 
 func (c *conn) handleSessionSetup(p PacketCodec, msg SessionSetupRequest) error {
-	fmt.Printf("handleSessionSetup: %v\n", msg)
+	fmt.Printf("handleSessionSetup request: %x\n", msg)
 
 	// get NTLMSSP message
 	gssBuffer := msg.Buffer()
@@ -238,7 +241,7 @@ func (c *conn) handleSessionSetup(p PacketCodec, msg SessionSetupRequest) error 
 func (c *conn) handleSessionSetupNtmlsspNetotiate(p PacketCodec, msg SessionSetupRequest, ntlpPayload auth.NTLMNegotiateMessage) error {
 
 	pkt := []byte{}
-	securityBuffer, _ := hex.DecodeString("a181c43081c1a0030a0101a10c060a2b06010401823702020aa281ab0481a84e544c4d5353500002000000140014003800000015828ae2b5bdb4abf704918f00000000000000005c005c004c000000060100000000000f4d00420056004d00320032003100320030003800020014004d00420056004d00320032003100320030003800010014004d00420056004d0032003200310032003000380004000000030014006d00620076006d003200320031003200300038000700080060bbda0f486dd90100000000")
+	securityBuffer, _ := hex.DecodeString("a181c43081c1a0030a0101a10c060a2b06010401823702020aa281ab0481a84e544c4d5353500002000000140014003800000015828ae2ade8f7c5b20b941000000000000000005c005c004c000000060100000000000f4d00420056004d00320032003100320030003800020014004d00420056004d00320032003100320030003800010014004d00420056004d0032003200310032003000380004000000030014006d00620076006d0032003200310032003000380007000800a421b4497870d90100000000")
 	log.Printf("securityBuffer lenght: %v", len(securityBuffer))
 	responseHdr := SessionSetupResponse(make([]byte, 8+len(securityBuffer)))
 	responseHdr.SetStructureSize()
@@ -263,7 +266,8 @@ func (c *conn) handleSessionSetupNtmlsspNetotiate(p PacketCodec, msg SessionSetu
 	// } else {
 	// 	sessionID++
 	// }
-	smb2Header.SetSessionId(p.SessionId())
+	fmt.Printf("p.SessionId(): %v\n", p.SessionId())
+	smb2Header.SetSessionId(sessionID)
 	smb2Header.SetSignature([]byte{0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00})
 
 	l := len(smb2Header) + len(responseHdr)
@@ -278,7 +282,7 @@ func (c *conn) handleSessionSetupNtmlsspNetotiate(p PacketCodec, msg SessionSetu
 	pkt = append(pkt, smb2Header...)
 	pkt = append(pkt, responseHdr...)
 
-	fmt.Printf("handleSessionSetup: %v\n", hex.EncodeToString(pkt))
+	fmt.Printf("handleSessionSetup response 1: %v\n", hex.EncodeToString(pkt))
 	c.rwc.Write(pkt)
 	fmt.Printf("send response: %d\n", len(pkt))
 
@@ -325,7 +329,7 @@ func (c *conn) handleSessionSetupNtmlsspAuth(p PacketCodec, msg SessionSetupRequ
 	pkt = append(pkt, smb2Header...)
 	pkt = append(pkt, responseHdr...)
 
-	fmt.Printf("handleSessionSetup: %v\n", hex.EncodeToString(pkt))
+	fmt.Printf("handleSessionSetup response 2: %v\n", hex.EncodeToString(pkt))
 	c.rwc.Write(pkt)
 	fmt.Printf("send response: %d\n", len(pkt))
 
