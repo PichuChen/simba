@@ -294,6 +294,7 @@ func (c *conn) handleSessionSetupNtmlsspAuth(p PacketCodec, msg SessionSetupRequ
 	pkt := []byte{}
 	responseHdr := SessionSetupResponse(make([]byte, 8))
 	responseHdr.SetStructureSize()
+	responseHdr.SetSessionFlags(SMB2_SESSION_FLAG_IS_GUEST | SMB2_SESSION_FLAG_IS_NULL)
 	responseHdr.SetSecurityBufferOffset(0)
 	responseHdr.SetSecurityBufferLength(0)
 	// responseHdr.SetSecurityMode(Securi)

@@ -1,18 +1,24 @@
 package simba
 
-import "encoding/binary"
+import (
+	"encoding/binary"
+	"log"
+)
 
 type PacketCodec []byte
 
 func (p PacketCodec) IsInvalid() bool {
 	// MS-SMB2, MUST be set to 64
 	if len(p) < 64 {
+		log.Println("PacketCodec IsInvalid: len(p) < 64")
 		return true
 	}
 
 	// check if the packet is a valid SMB2 packet
-	// MS-SMB2, MUST be set to 0xFE, 'S', 'M', 'B'
-	if p[0] != 0xfe || p[1] != 0x53 || p[2] != 0x4d || p[3] != 0x42 {
+	// MS-SMB2, MUST be set to (0xFF ~ FC), 'S', 'M', 'B'
+	// MS-SMB2 v20230920 - page 386 / 488
+	if p[1] != 0x53 || p[2] != 0x4d || p[3] != 0x42 {
+		log.Println("PacketCodec IsInvalid: p[1] != 0x53 || p[2] != 0x4d || p[3] != 0x42")
 		return true
 	}
 	return false

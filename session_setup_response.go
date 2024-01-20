@@ -4,12 +4,14 @@ import (
 	"encoding/binary"
 )
 
+// MS-SMB2 2.2.6 SMB2 SESSION_SETUP Response
 type SessionSetupResponse []byte
 
 type SessionSetupSessionFlags uint16
 
 const (
 	// MS-SMB2 - v20211006 page 57/481
+	// MS-SMB2 - v20230920 page 59/488
 	SMB2_SESSION_FLAG_IS_GUEST     SessionSetupSessionFlags = 0x0001
 	SMB2_SESSION_FLAG_IS_NULL      SessionSetupSessionFlags = 0x0002
 	SMB2_SESSION_FLAG_ENCRYPT_DATA SessionSetupSessionFlags = 0x0004
